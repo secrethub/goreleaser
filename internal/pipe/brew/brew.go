@@ -19,11 +19,8 @@ import (
 	"github.com/goreleaser/goreleaser/pkg/context"
 )
 
-// ErrNoDarwin64Build when there is no build for darwin_amd64
-var ErrNoDarwin64Build = errors.New("brew tap requires one darwin amd64 build")
-
-// ErrTooManyDarwin64Builds when there are too many builds for darwin_amd64
-var ErrTooManyDarwin64Builds = errors.New("brew tap requires at most one darwin amd64 build")
+// ErrNoBrewBuilds when there is no build for darwin_amd64 or linux_amd64
+var ErrNoBrewBuilds = errors.New("brew tap requires at least one darwin amd64 or linux amd64 build")
 
 // Pipe for brew deployment
 type Pipe struct{}
@@ -71,11 +68,11 @@ func (Pipe) Default(ctx *context.Context) error {
 
 func isBrewBuild(build config.Build) bool {
 	for _, ignore := range build.Ignore {
-		if ignore.Goos == "darwin" && ignore.Goarch == "amd64" {
+		if (ignore.Goos == "darwin" || ignore.Goos == "linux") && ignore.Goarch == "amd64" {
 			return false
 		}
 	}
-	return contains(build.Goos, "darwin") && contains(build.Goarch, "amd64")
+	return (contains(build.Goos, "darwin") || contains(build.Goos, "linux")) && contains(build.Goarch, "amd64")
 }
 
 func contains(ss []string, s string) bool {
@@ -97,20 +94,20 @@ func doRun(ctx *context.Context, client client.Client) error {
 
 	var archives = ctx.Artifacts.Filter(
 		artifact.And(
-			artifact.ByGoos("darwin"),
+			artifact.Or(
+				artifact.ByGoos("darwin"),
+				artifact.ByGoos("linux"),
+			),
 			artifact.ByGoarch("amd64"),
 			artifact.ByGoarm(""),
 			artifact.ByType(artifact.UploadableArchive),
 		),
 	).List()
 	if len(archives) == 0 {
-		return ErrNoDarwin64Build
-	}
-	if len(archives) > 1 {
-		return ErrTooManyDarwin64Builds
+		return ErrNoBrewBuilds
 	}
 
-	content, err := buildFormula(ctx, archives[0])
+	content, err := buildFormula(ctx, archives)
 	if err != nil {
 		return err
 	}
@@ -154,8 +151,8 @@ func getFormat(ctx *context.Context) string {
 	return ctx.Config.Archive.Format
 }
 
-func buildFormula(ctx *context.Context, artifact artifact.Artifact) (bytes.Buffer, error) {
-	data, err := dataFor(ctx, artifact)
+func buildFormula(ctx *context.Context, artifacts []artifact.Artifact) (bytes.Buffer, error) {
+	data, err := dataFor(ctx, artifacts)
 	if err != nil {
 		return bytes.Buffer{}, err
 	}
@@ -171,12 +168,11 @@ func doBuildFormula(data templateData) (out bytes.Buffer, err error) {
 	return
 }
 
-func dataFor(ctx *context.Context, artifact artifact.Artifact) (result templateData, err error) {
+func artifactData(ctx *context.Context, artifact artifact.Artifact) (string, string, error) {
 	sum, err := artifact.Checksum()
 	if err != nil {
-		return
+		return "", sum, err
 	}
-	var cfg = ctx.Config.Brew
 
 	if ctx.Config.Brew.URLTemplate == "" {
 		ctx.Config.Brew.URLTemplate = fmt.Sprintf("%s/%s/%s/releases/download/{{ .Tag }}/{{ .ArtifactName }}",
@@ -186,17 +182,38 @@ func dataFor(ctx *context.Context, artifact artifact.Artifact) (result templateD
 	}
 	url, err := tmpl.New(ctx).WithArtifact(artifact, map[string]string{}).Apply(ctx.Config.Brew.URLTemplate)
 	if err != nil {
-		return
+		return url, sum, err
 	}
+	return url, sum, nil
+}
 
+func dataFor(ctx *context.Context, artifacts []artifact.Artifact) (result templateData, err error) {
+	var macURL, macSum, linuxURL, linuxSum string
+	for _, artifact := range artifacts {
+		if artifact.Goos == "darwin" {
+			macURL, macSum, err = artifactData(ctx, artifact)
+			if err != nil {
+				return result, err
+			}
+		}
+		if artifact.Goos == "linux" {
+			linuxURL, linuxSum, err = artifactData(ctx, artifact)
+			if err != nil {
+				return result, err
+			}
+		}
+	}
+	var cfg = ctx.Config.Brew
 	return templateData{
 		Name:             formulaNameFor(ctx.Config.Brew.Name),
-		DownloadURL:      url,
+		DownloadURLMac:   macURL,
+		SHA256Mac:        macSum,
+		DownloadURLLinux: linuxURL,
+		SHA256Linux:      linuxSum,
 		Desc:             cfg.Description,
 		Homepage:         cfg.Homepage,
 		Version:          ctx.Version,
 		Caveats:          split(cfg.Caveats),
-		SHA256:           sum,
 		Dependencies:     cfg.Dependencies,
 		Conflicts:        cfg.Conflicts,
 		Plist:            cfg.Plist,

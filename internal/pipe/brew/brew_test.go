@@ -35,13 +35,15 @@ func TestSimpleName(t *testing.T) {
 }
 
 var defaultTemplateData = templateData{
-	Desc:        "Some desc",
-	Homepage:    "https://google.com",
-	DownloadURL: "https://github.com/caarlos0/test/releases/download/v0.1.3/test_Darwin_x86_64.tar.gz",
-	Name:        "Test",
-	Version:     "0.1.3",
-	Caveats:     []string{},
-	SHA256:      "1633f61598ab0791e213135923624eb342196b3494909c91899bcd0560f84c68",
+	Desc:             "Some desc",
+	Homepage:         "https://google.com",
+	DownloadURLMac:   "https://github.com/caarlos0/test/releases/download/v0.1.3/test_Darwin_x86_64.tar.gz",
+	SHA256Mac:        "1633f61598ab0791e213135923624eb342196b3494909c91899bcd0560f84c68",
+	DownloadURLLinux: "https://github.com/caarlos0/test/releases/download/v0.1.3/test_Linux_x86_64.tar.gz",
+	SHA256Linux:      "1633f61598ab0791e213135923624eb342196b3494909c91899bcd0560f84c68",
+	Name:             "Test",
+	Version:          "0.1.3",
+	Caveats:          []string{},
 }
 
 func assertDefaultTemplateData(t *testing.T, formulae string) {
@@ -170,6 +172,13 @@ func TestRunPipe(t *testing.T) {
 				Goarch: "amd64",
 				Type:   artifact.UploadableArchive,
 			})
+			ctx.Artifacts.Add(artifact.Artifact{
+				Name:   "bin." + format,
+				Path:   path,
+				Goos:   "linux",
+				Goarch: "amd64",
+				Type:   artifact.UploadableArchive,
+			})
 
 			_, err = os.Create(path)
 			assert.NoError(t, err)
@@ -208,40 +217,7 @@ func TestRunPipeNoDarwin64Build(t *testing.T) {
 		},
 	}
 	client := &DummyClient{}
-	assert.Equal(t, ErrNoDarwin64Build, doRun(ctx, client))
-	assert.False(t, client.CreatedFile)
-}
-
-func TestRunPipeMultipleDarwin64Build(t *testing.T) {
-	var ctx = context.New(
-		config.Project{
-			Archive: config.Archive{
-				Format: "tar.gz",
-			},
-			Brew: config.Homebrew{
-				GitHub: config.Repo{
-					Owner: "test",
-					Name:  "test",
-				},
-			},
-		},
-	)
-	ctx.Artifacts.Add(artifact.Artifact{
-		Name:   "bin1",
-		Path:   "doesnt mather",
-		Goos:   "darwin",
-		Goarch: "amd64",
-		Type:   artifact.UploadableArchive,
-	})
-	ctx.Artifacts.Add(artifact.Artifact{
-		Name:   "bin2",
-		Path:   "doesnt mather",
-		Goos:   "darwin",
-		Goarch: "amd64",
-		Type:   artifact.UploadableArchive,
-	})
-	client := &DummyClient{}
-	assert.Equal(t, ErrTooManyDarwin64Builds, doRun(ctx, client))
+	assert.Equal(t, ErrNoBrewBuilds, doRun(ctx, client))
 	assert.False(t, client.CreatedFile)
 }
 

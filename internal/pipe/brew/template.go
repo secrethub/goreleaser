@@ -4,10 +4,12 @@ type templateData struct {
 	Name             string
 	Desc             string
 	Homepage         string
-	DownloadURL      string
+	DownloadURLMac   string
+	SHA256Mac        string
+	DownloadURLLinux string
+	SHA256Linux      string
 	Version          string
 	Caveats          []string
-	SHA256           string
 	Plist            string
 	DownloadStrategy string
 	Install          []string
@@ -24,10 +26,21 @@ require_relative "{{ .CustomRequire }}"
 class {{ .Name }} < Formula
   desc "{{ .Desc }}"
   homepage "{{ .Homepage }}"
-  url "{{ .DownloadURL }}"
-  {{- if .DownloadStrategy }}, :using => {{ .DownloadStrategy }}{{- end }}
   version "{{ .Version }}"
-  sha256 "{{ .SHA256 }}"
+  {{- if .DownloadURLMac }}
+  if OS.mac?
+    url "{{ .DownloadURLMac }}"
+    {{- if .DownloadStrategy }}, :using => {{ .DownloadStrategy }}{{- end }}
+    sha256 "{{ .SHA256Mac }}"
+  end
+  {{- end }}
+  {{- if .DownloadURLLinux }}
+  if OS.linux?
+	url "{{ .DownloadURLLinux }}"
+    {{- if .DownloadStrategy }}, :using => {{ .DownloadStrategy }}{{- end }}
+    sha256 "{{ .SHA256Linux }}"
+  end
+  {{- end }}
 
   {{- with .CustomBlock }}
   {{ range $index, $element := . }}
