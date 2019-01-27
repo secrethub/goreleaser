@@ -40,9 +40,17 @@ type Context struct {
 	SkipSign     bool
 	SkipValidate bool
 	RmDist       bool
-	Debug        bool
 	PreRelease   bool
 	Parallelism  int
+	Semver       Semver
+}
+
+// Semver represents a semantic version
+type Semver struct {
+	Major      int64
+	Minor      int64
+	Patch      int64
+	Prerelease string
 }
 
 // New context

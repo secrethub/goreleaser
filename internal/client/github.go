@@ -2,6 +2,8 @@ package client
 
 import (
 	"bytes"
+	"crypto/tls"
+	"net/http"
 	"net/url"
 	"os"
 
@@ -22,7 +24,17 @@ func NewGitHub(ctx *context.Context) (Client, error) {
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: ctx.Token},
 	)
-	client := github.NewClient(oauth2.NewClient(ctx, ts))
+	httpClient := oauth2.NewClient(ctx, ts)
+	base := httpClient.Transport.(*oauth2.Transport).Base
+	if &base != nil {
+		base = http.DefaultTransport
+	}
+	// nolint: gosec
+	base.(*http.Transport).TLSClientConfig = &tls.Config{
+		InsecureSkipVerify: ctx.Config.GitHubURLs.SkipTLSVerify,
+	}
+	httpClient.Transport.(*oauth2.Transport).Base = base
+	client := github.NewClient(httpClient)
 	if ctx.Config.GitHubURLs.API != "" {
 		api, err := url.Parse(ctx.Config.GitHubURLs.API)
 		if err != nil {
@@ -116,6 +128,10 @@ func (c *githubClient) CreateRelease(ctx *context.Context, body string) (int64, 
 			data,
 		)
 	} else {
+		// keep the pre-existing release notes
+		if release.GetBody() != "" {
+			data.Body = release.Body
+		}
 		release, _, err = c.client.Repositories.EditRelease(
 			ctx,
 			ctx.Config.Release.GitHub.Owner,

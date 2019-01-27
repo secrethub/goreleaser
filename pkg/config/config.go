@@ -14,9 +14,10 @@ import (
 
 // GitHubURLs holds the URLs to be used when using github enterprise
 type GitHubURLs struct {
-	API      string `yaml:"api,omitempty"`
-	Upload   string `yaml:"upload,omitempty"`
-	Download string `yaml:"download,omitempty"`
+	API           string `yaml:"api,omitempty"`
+	Upload        string `yaml:"upload,omitempty"`
+	Download      string `yaml:"download,omitempty"`
+	SkipTLSVerify bool   `yaml:"skip_tls_verify,omitempty"`
 }
 
 // Repo represents any kind of repo (github, gitlab, etc)
@@ -264,17 +265,13 @@ type Filters struct {
 type Changelog struct {
 	Filters Filters `yaml:",omitempty"`
 	Sort    string  `yaml:",omitempty"`
+	Skip    bool    `yaml:",omitempty"`
 }
 
 // EnvFiles holds paths to files that contains environment variables
 // values like the github token for example
 type EnvFiles struct {
 	GitHubToken string `yaml:"github_token,omitempty"`
-}
-
-// Git config
-type Git struct {
-	ShortHash bool `yaml:"short_hash,omitempty"`
 }
 
 // Before config
@@ -324,7 +321,6 @@ type Project struct {
 	Dist          string    `yaml:",omitempty"`
 	Sign          Sign      `yaml:",omitempty"`
 	EnvFiles      EnvFiles  `yaml:"env_files,omitempty"`
-	Git           Git       `yaml:",omitempty"`
 	Before        Before    `yaml:",omitempty"`
 
 	// this is a hack ¯\_(ツ)_/¯
