@@ -8,11 +8,13 @@ package context
 
 import (
 	ctx "context"
+	"fmt"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/goreleaser/goreleaser/internal/artifact"
+	"github.com/goreleaser/goreleaser/internal/pipe"
 	"github.com/goreleaser/goreleaser/pkg/config"
 )
 
@@ -49,6 +51,7 @@ type Context struct {
 	ReleaseNotes string
 	Version      string
 	Snapshot     bool
+	IncludePipes []string
 	SkipPublish  bool
 	SkipSign     bool
 	SkipValidate bool
@@ -86,6 +89,21 @@ func Wrap(ctx ctx.Context, config config.Project) *Context {
 		Parallelism: 4,
 		Artifacts:   artifact.New(),
 	}
+}
+
+// CheckPipe returns a pipe skip error when specified pipe is not configured to run
+func (ctx *Context) CheckPipe(pipeStr string) error {
+	if len(ctx.IncludePipes) == 0 {
+		return nil
+	}
+
+	for _, incl := range ctx.IncludePipes {
+		if pipeStr == incl {
+			return nil
+		}
+	}
+
+	return pipe.Skip(fmt.Sprintf("pipe %s is not configured to run", pipeStr))
 }
 
 func splitEnv(env []string) map[string]string {

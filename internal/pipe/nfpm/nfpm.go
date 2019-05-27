@@ -68,6 +68,9 @@ func (Pipe) Default(ctx *context.Context) error {
 
 // Run the pipe
 func (Pipe) Run(ctx *context.Context) error {
+	if err := ctx.CheckPipe("nfpm"); err != nil {
+		return err
+	}
 	for _, nfpm := range ctx.Config.NFPMs {
 		if len(nfpm.Formats) == 0 {
 			return pipe.Skip("no output formats configured")

@@ -33,6 +33,10 @@ func (Pipe) Default(ctx *context.Context) error {
 
 // Run the pipe
 func (Pipe) Run(ctx *context.Context) error {
+	if err := ctx.CheckPipe("github"); err != nil {
+		return err
+	}
+
 	token, err := loadEnv("GITHUB_TOKEN", ctx.Config.EnvFiles.GitHubToken)
 	ctx.Token = token
 	if ctx.SkipPublish {
