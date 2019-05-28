@@ -4,6 +4,8 @@ package pipeline
 import (
 	"fmt"
 
+	"github.com/goreleaser/goreleaser/internal/pipe/alpine"
+
 	"github.com/goreleaser/goreleaser/internal/pipe/semver"
 
 	"github.com/goreleaser/goreleaser/internal/pipe/archive"
@@ -48,6 +50,7 @@ var Pipeline = []Piper{
 	build.Pipe{},           // build
 	archive.Pipe{},         // archive in tar.gz, zip or binary (which does no archiving at all)
 	nfpm.Pipe{},            // archive via fpm (deb, rpm) using "native" go impl
+	alpine.Pipe{},          // archive via alpine (apk)
 	snapcraft.Pipe{},       // archive via snapcraft (snap)
 	checksums.Pipe{},       // checksums of the files
 	sign.Pipe{},            // sign artifacts

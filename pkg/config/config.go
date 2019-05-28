@@ -310,6 +310,23 @@ type Put struct {
 	Signature      bool     `yaml:",omitempty"`
 }
 
+// Alpine upload configuration
+type Alpine struct {
+	Name       string `yaml:",omitempty"`
+	Root       string `yaml:",omitempty"`
+	Branch     string `yaml:",omitempty"`
+	Repository string `yaml:",omitempty"`
+
+	Contributor string `yaml:",omitempty"`
+	Maintainer  string `yaml:",omitempty"`
+	Rel         int    `yaml:",omitempty"`
+	Description string `yaml:",omitempty"`
+	URL         string `yaml:",omitempty"`
+	License     string `yaml:",omitempty"`
+
+	CheckFn string `yaml:"check_fn,omitempty"`
+}
+
 // Project includes all project configuration
 type Project struct {
 	ProjectName   string    `yaml:"project_name,omitempty"`
@@ -327,6 +344,7 @@ type Project struct {
 	Checksum      Checksum  `yaml:",omitempty"`
 	Dockers       []Docker  `yaml:",omitempty"`
 	Artifactories []Put     `yaml:",omitempty"`
+	Alpine        []Alpine  `yaml:",omitempty"`
 	Puts          []Put     `yaml:",omitempty"`
 	S3            []S3      `yaml:"s3,omitempty"`
 	Changelog     Changelog `yaml:",omitempty"`
