@@ -1,0 +1,36 @@
+#############################################
+# Download dependencies
+#############################################
+FROM golang:1.12-alpine as deps
+
+RUN apk add --update make git
+WORKDIR /build
+COPY go.mod .
+COPY go.sum .
+RUN go mod download
+
+#############################################
+# Build
+#############################################
+FROM deps as build
+
+WORKDIR /build
+COPY . .
+RUN make build
+
+#############################################
+# Run
+#############################################
+FROM golang:1.12-alpine
+
+RUN apk add --update alpine-sdk git
+
+RUN adduser -G abuild -g "Alpine Package Builder" -s /bin/sh -D goreleaser && echo "goreleaser ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+USER goreleaser
+
+WORKDIR /goreleaser
+
+COPY --from=build /build/goreleaser /usr/bin/goreleaser
+
+ENTRYPOINT ["goreleaser"]
+CMD ["release", "--include", "alpine"]
