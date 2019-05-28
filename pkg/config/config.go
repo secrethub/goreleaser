@@ -289,12 +289,13 @@ type Before struct {
 
 // S3 contains s3 config
 type S3 struct {
-	Region   string
-	Bucket   string
-	Folder   string
-	Profile  string
-	Endpoint string // used for minio for example
-	ACL      string
+	Region    string
+	Bucket    string
+	Artifacts []string
+	Folder    string
+	Profile   string
+	Endpoint  string // used for minio for example
+	ACL       string
 }
 
 // Put HTTP upload configuration

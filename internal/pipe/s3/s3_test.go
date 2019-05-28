@@ -52,7 +52,6 @@ func TestDefaults(t *testing.T) {
 	assert.Equal([]config.S3{{
 		Bucket: "foo",
 		Region: "us-east-1",
-		Folder: "{{ .ProjectName }}/{{ .Tag }}",
 		ACL:    "private",
 	}}, ctx.Config.S3)
 }
@@ -70,8 +69,9 @@ func TestUpload(t *testing.T) {
 		ProjectName: "testupload",
 		S3: []config.S3{
 			{
-				Bucket:   "test",
-				Endpoint: "http://" + listen,
+				Bucket:    "test",
+				Artifacts: []string{"archive", "nfpm"},
+				Endpoint:  "http://" + listen,
 			},
 		},
 	})
@@ -110,8 +110,9 @@ func TestUploadCustomBucketID(t *testing.T) {
 		ProjectName: "testupload",
 		S3: []config.S3{
 			{
-				Bucket:   "{{.Env.BUCKET_ID}}",
-				Endpoint: "http://" + listen,
+				Bucket:    "{{.Env.BUCKET_ID}}",
+				Artifacts: []string{"archive", "nfpm"},
+				Endpoint:  "http://" + listen,
 			},
 		},
 	})
@@ -149,8 +150,9 @@ func TestUploadInvalidCustomBucketID(t *testing.T) {
 		ProjectName: "testupload",
 		S3: []config.S3{
 			{
-				Bucket:   "{{.Bad}}",
-				Endpoint: "http://" + listen,
+				Bucket:    "{{.Bad}}",
+				Artifacts: []string{"archive", "nfpm"},
+				Endpoint:  "http://" + listen,
 			},
 		},
 	})
@@ -187,8 +189,9 @@ func prepareEnv(t *testing.T, listen string) {
 
 	t.Log("creating test bucket")
 	_, err := newS3Svc(config.S3{
-		Endpoint: "http://" + listen,
-		Region:   "us-east-1",
+		Endpoint:  "http://" + listen,
+		Region:    "us-east-1",
+		Artifacts: []string{"archive", "nfpm"},
 	}).CreateBucket(&s3.CreateBucketInput{
 		Bucket: aws.String("test"),
 	})
