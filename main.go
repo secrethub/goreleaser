@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/apex/log"
@@ -29,6 +30,7 @@ type releaseOptions struct {
 	Config       string
 	ReleaseNotes string
 	Snapshot     bool
+	Include      []string
 	SkipPublish  bool
 	SkipSign     bool
 	SkipValidate bool
@@ -60,6 +62,7 @@ func main() {
 	var rmDist = releaseCmd.Flag("rm-dist", "Remove the dist folder before building").Bool()
 	var parallelism = releaseCmd.Flag("parallelism", "Amount tasks to run concurrently").Short('p').Default("4").Int()
 	var timeout = releaseCmd.Flag("timeout", "Timeout to the entire release process").Default("30m").Duration()
+	var include = releaseCmd.Flag("include", "Only include pipes in comma-separated list (e.g. s3,github,brew,snap)").String()
 
 	app.Version(fmt.Sprintf("%v, commit %v, built at %v", version, commit, date))
 	app.VersionFlag.Short('v')
@@ -86,6 +89,7 @@ func main() {
 			Config:       *config,
 			ReleaseNotes: *releaseNotes,
 			Snapshot:     *snapshot,
+			Include:      strings.Split(*include, ","),
 			SkipPublish:  *skipPublish,
 			SkipValidate: *skipValidate,
 			SkipSign:     *skipSign,
@@ -113,6 +117,7 @@ func releaseProject(options releaseOptions) error {
 	log.Debugf("parallelism: %v", ctx.Parallelism)
 	ctx.ReleaseNotes = options.ReleaseNotes
 	ctx.Snapshot = options.Snapshot
+	ctx.IncludePipes = options.Include
 	ctx.SkipPublish = ctx.Snapshot || options.SkipPublish
 	ctx.SkipValidate = ctx.Snapshot || options.SkipValidate
 	ctx.SkipSign = options.SkipSign

@@ -61,6 +61,9 @@ func (Pipe) Publish(ctx *context.Context) error {
 }
 
 func doPublish(ctx *context.Context, c client.Client) error {
+	if err := ctx.CheckPipe("github"); err != nil {
+		return err
+	}
 	if ctx.Config.Release.Disable {
 		return pipe.Skip("release pipe is disabled")
 	}

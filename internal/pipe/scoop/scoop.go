@@ -26,6 +26,10 @@ func (Pipe) String() string {
 
 // Publish scoop manifest
 func (Pipe) Publish(ctx *context.Context) error {
+	if err := ctx.CheckPipe("scoop"); err != nil {
+		return err
+	}
+
 	client, err := client.NewGitHub(ctx)
 	if err != nil {
 		return err

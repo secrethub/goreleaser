@@ -83,6 +83,9 @@ func (Pipe) Run(ctx *context.Context) error {
 	if len(ctx.Config.Dockers) == 0 || missingImage(ctx) {
 		return pipe.Skip("docker section is not configured")
 	}
+	if err := ctx.CheckPipe("docker"); err != nil {
+		return err
+	}
 	_, err := exec.LookPath("docker")
 	if err != nil {
 		return ErrNoDocker

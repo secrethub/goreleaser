@@ -29,6 +29,10 @@ func (Pipe) Publish(ctx *context.Context) error {
 		return pipe.Skip("put section is not configured")
 	}
 
+	if err := ctx.CheckPipe("put"); err != nil {
+		return err
+	}
+
 	// Check requirements for every instance we have configured.
 	// If not fulfilled, we can skip this pipeline
 	for _, instance := range ctx.Config.Puts {

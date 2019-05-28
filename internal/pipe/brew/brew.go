@@ -34,6 +34,10 @@ func (Pipe) String() string {
 
 // Publish brew formula
 func (Pipe) Publish(ctx *context.Context) error {
+	if err := ctx.CheckPipe("brew"); err != nil {
+		return err
+	}
+
 	client, err := client.NewGitHub(ctx)
 	if err != nil {
 		return err

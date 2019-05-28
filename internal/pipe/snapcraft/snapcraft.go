@@ -71,6 +71,9 @@ func (Pipe) Default(ctx *context.Context) error {
 
 // Run the pipe
 func (Pipe) Run(ctx *context.Context) error {
+	if err := ctx.CheckPipe("snapcraft"); err != nil {
+		return err
+	}
 	if ctx.Config.Snapcraft.Summary == "" && ctx.Config.Snapcraft.Description == "" {
 		return pipe.Skip("no summary nor description were provided")
 	}

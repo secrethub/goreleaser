@@ -59,6 +59,10 @@ func (Pipe) Publish(ctx *context.Context) error {
 		return pipe.Skip("artifactory section is not configured")
 	}
 
+	if err := ctx.CheckPipe("artifactory"); err != nil {
+		return err
+	}
+
 	// Check requirements for every instance we have configured.
 	// If not fulfilled, we can skip this pipeline
 	for _, instance := range ctx.Config.Artifactories {
