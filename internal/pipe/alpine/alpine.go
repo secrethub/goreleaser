@@ -91,9 +91,8 @@ func (Pipe) Run(ctx *context.Context) error {
 
 		localPath := filepath.Join(ctx.Config.Dist, "alpine-"+alpine.Name)
 		localPathAbs := filepath.Join(pwd, localPath)
-		alpineRepoPath := filepath.Join(alpine.Root, alpine.Branch, alpine.Repository)
 
-		err = os.MkdirAll(filepath.Join(localPath, alpineRepoPath), 0700)
+		err = os.MkdirAll(localPath, 0700)
 		if err != nil {
 			return err
 		}
@@ -106,11 +105,12 @@ func (Pipe) Run(ctx *context.Context) error {
 		log.WithField(apkBuildFileName, localPath).Info("writing")
 		err = ioutil.WriteFile(filepath.Join(localPath, apkBuildFileName), apkBuild, 0644)
 
-		pubKeyName := filepath.Dir(pubKeyPath)
-
 		if _, err = exec.LookPath("abuild"); err != nil {
 			return err
 		}
+
+		repoPath := filepath.Join(alpine.Root, alpine.Branch, alpine.Repository)
+		pubKeyName := filepath.Dir(pubKeyPath)
 
 		for _, binArtifact := range artifacts {
 			arch := binArtifact.Goarch
@@ -120,6 +120,8 @@ func (Pipe) Run(ctx *context.Context) error {
 			case "amd64":
 				arch = "x86_64"
 			}
+
+			artifactRepoPath := filepath.Join(repoPath, arch)
 
 			binDir := filepath.Join(localPath, arch)
 			err := os.Mkdir(binDir, 0700)
@@ -162,13 +164,14 @@ func (Pipe) Run(ctx *context.Context) error {
 			apkFilePath := filepath.Join(abuildOutputPath, apkFileName)
 
 			ctx.Artifacts.Add(artifact.Artifact{
-				Type:   artifact.APK,
-				Name:   apkFileName,
-				Path:   apkFilePath,
-				Goos:   "linux",
-				Goarch: binArtifact.Goarch,
-				Goarm:  "",
-				Extra:  artifactMeta,
+				Type:    artifact.APK,
+				Name:    apkFileName,
+				Path:    apkFilePath,
+				Goos:    "linux",
+				Goarch:  binArtifact.Goarch,
+				Goarm:   "",
+				RepoDir: artifactRepoPath,
+				Extra:   artifactMeta,
 			})
 
 			apkIndexPath := filepath.Join(abuildOutputPath, apkIndexFileName)
@@ -182,13 +185,14 @@ func (Pipe) Run(ctx *context.Context) error {
 			}
 
 			ctx.Artifacts.Add(artifact.Artifact{
-				Type:   artifact.APKIndex,
-				Name:   apkIndexFileName,
-				Path:   apkIndexPath,
-				Goos:   "linux",
-				Goarch: binArtifact.Goarch,
-				Goarm:  "",
-				Extra:  artifactMeta,
+				Type:    artifact.APKIndex,
+				Name:    apkIndexFileName,
+				Path:    apkIndexPath,
+				Goos:    "linux",
+				Goarch:  binArtifact.Goarch,
+				Goarm:   "",
+				RepoDir: artifactRepoPath,
+				Extra:   artifactMeta,
 			})
 		}
 	}

@@ -32,6 +32,8 @@ var (
 		"nfpm":      artifact.LinuxPackage,
 		"checksum":  artifact.Checksum,
 		"signature": artifact.Signature,
+		"apk":       artifact.APK,
+		"apkindex":  artifact.APKIndex,
 	}
 )
 
