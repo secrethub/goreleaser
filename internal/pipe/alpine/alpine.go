@@ -72,6 +72,10 @@ func (Pipe) Run(ctx *context.Context) error {
 		return pipe.Skip("alpine section is not configured")
 	}
 
+	if err := ctx.CheckPipe("alpine"); err != nil {
+		return err
+	}
+
 	// Handle every configured Alpine
 	for _, alpine := range ctx.Config.Alpine {
 		artifacts := ctx.Artifacts.Filter(
