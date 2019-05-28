@@ -103,7 +103,7 @@ func (ctx *Context) CheckPipe(pipeStr string) error {
 		}
 	}
 
-	return pipe.Skip(fmt.Sprintf("pipe %s is not configured to run", pipeStr))
+	return pipe.Skip(fmt.Sprintf("pipe %s is excluded from current run", pipeStr))
 }
 
 func splitEnv(env []string) map[string]string {
