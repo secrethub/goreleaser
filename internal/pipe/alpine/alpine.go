@@ -81,6 +81,10 @@ func (Pipe) Run(ctx *context.Context) error {
 		artifacts := ctx.Artifacts.Filter(
 			artifact.And(
 				artifact.ByGoos("linux"),
+				artifact.Or(
+					artifact.ByGoarch("386"),
+					artifact.ByGoarch("amd64"),
+				),
 				artifact.ByGoarm(""),
 				artifact.ByType(artifact.Binary),
 			),
