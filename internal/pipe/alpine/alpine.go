@@ -23,7 +23,7 @@ import (
 const (
 	apkBuildFileName = "APKBUILD"
 	apkIndexFileName = "APKINDEX.tar.gz"
-	abuildOutputDir  = "dist"
+	abuildOutputDir  = "alpine"
 )
 
 var (
@@ -97,7 +97,7 @@ func (Pipe) Run(ctx *context.Context) error {
 			return err
 		}
 
-		localPath := filepath.Join(ctx.Config.Dist, "alpine-"+alpine.Name)
+		localPath := filepath.Join(ctx.Config.Dist, "alpine", alpine.Name)
 		localPathAbs := filepath.Join(pwd, localPath)
 
 		err = os.MkdirAll(localPath, 0700)
