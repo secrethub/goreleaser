@@ -84,7 +84,6 @@ func defaults(put *config.Put) {
 
 // CheckConfig validates a Put configuration returning a descriptive error when appropriate
 func CheckConfig(ctx *context.Context, put *config.Put, kind string) error {
-
 	if put.Target == "" {
 		return misconfigured(kind, put, "missing target")
 	}
@@ -180,7 +179,7 @@ func uploadWithFilter(ctx *context.Context, put *config.Put, filter artifact.Fil
 }
 
 // uploadAsset uploads file to target and logs all actions
-func uploadAsset(ctx *context.Context, put *config.Put, artifact artifact.Artifact, kind string, check ResponseChecker) error {
+func uploadAsset(ctx *context.Context, put *config.Put, artifact *artifact.Artifact, kind string, check ResponseChecker) error {
 	envBase := fmt.Sprintf("%s_%s_", strings.ToUpper(kind), strings.ToUpper(put.Name))
 	username := put.Username
 	if username == "" {
@@ -198,7 +197,7 @@ func uploadAsset(ctx *context.Context, put *config.Put, artifact artifact.Artifa
 	}
 
 	// Handle the artifact
-	asset, err := assetOpen(kind, &artifact)
+	asset, err := assetOpen(kind, artifact)
 	if err != nil {
 		return err
 	}
@@ -219,7 +218,7 @@ func uploadAsset(ctx *context.Context, put *config.Put, artifact artifact.Artifa
 		headers[put.ChecksumHeader] = sum
 	}
 
-	_, err = uploadAssetToServer(ctx, put, targetURL, username, secret, headers, asset, check)
+	res, err := uploadAssetToServer(ctx, put, targetURL, username, secret, headers, asset, check)
 	if err != nil {
 		msg := fmt.Sprintf("%s: upload failed", kind)
 		log.WithError(err).WithFields(log.Fields{
@@ -227,6 +226,9 @@ func uploadAsset(ctx *context.Context, put *config.Put, artifact artifact.Artifa
 			"username": username,
 		}).Error(msg)
 		return errors.Wrap(err, msg)
+	}
+	if err := res.Body.Close(); err != nil {
+		log.WithError(err).Warn("failed to close response body")
 	}
 
 	log.WithFields(log.Fields{
@@ -333,7 +335,7 @@ type targetData struct {
 // resolveTargetTemplate returns the resolved target template with replaced variables
 // Those variables can be replaced by the given context, goos, goarch, goarm and more
 // TODO: replace this with our internal template pkg
-func resolveTargetTemplate(ctx *context.Context, put *config.Put, artifact artifact.Artifact) (string, error) {
+func resolveTargetTemplate(ctx *context.Context, put *config.Put, artifact *artifact.Artifact) (string, error) {
 	data := targetData{
 		Version:     ctx.Version,
 		Tag:         ctx.Git.CurrentTag,
@@ -341,6 +343,7 @@ func resolveTargetTemplate(ctx *context.Context, put *config.Put, artifact artif
 	}
 
 	if put.Mode == ModeBinary {
+		// TODO: multiple archives here
 		data.Os = replace(ctx.Config.Archive.Replacements, artifact.Goos)
 		data.Arch = replace(ctx.Config.Archive.Replacements, artifact.Goarch)
 		data.Arm = replace(ctx.Config.Archive.Replacements, artifact.Goarm)

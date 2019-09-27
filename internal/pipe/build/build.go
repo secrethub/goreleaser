@@ -3,6 +3,7 @@
 package build
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -41,7 +42,7 @@ func (Pipe) Run(ctx *context.Context) error {
 
 // Default sets the pipe defaults
 func (Pipe) Default(ctx *context.Context) error {
-	var ids = ids.New()
+	var ids = ids.New("builds")
 	for i, build := range ctx.Config.Builds {
 		ctx.Config.Builds[i] = buildWithDefaults(ctx, build)
 		ids.Inc(ctx.Config.Builds[i].ID)
@@ -62,7 +63,7 @@ func buildWithDefaults(ctx *context.Context, build config.Build) config.Build {
 		build.Binary = ctx.Config.ProjectName
 	}
 	if build.ID == "" {
-		build.ID = build.Binary
+		build.ID = ctx.Config.ProjectName
 	}
 	for k, v := range build.Env {
 		build.Env[k] = os.ExpandEnv(v)
@@ -112,7 +113,11 @@ func doBuild(ctx *context.Context, build config.Build, target string) error {
 
 	build.Binary = binary
 	var name = build.Binary + ext
-	var path = filepath.Join(ctx.Config.Dist, target, name)
+	var path = filepath.Join(
+		ctx.Config.Dist,
+		fmt.Sprintf("%s_%s", build.ID, target),
+		name,
+	)
 	log.WithField("binary", path).Info("building")
 	return builders.For(build.Lang).Build(ctx, build, builders.Options{
 		Target: target,

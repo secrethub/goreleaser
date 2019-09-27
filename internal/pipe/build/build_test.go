@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var fakeArtifact = artifact.Artifact{
+var fakeArtifact = &artifact.Artifact{
 	Name: "fake",
 }
 
@@ -35,6 +35,12 @@ func (f *fakeBuilder) Build(ctx *context.Context, build config.Build, options ap
 	if f.fail {
 		return errFailedBuild
 	}
+	if err := os.MkdirAll(filepath.Dir(options.Path), 0755); err != nil {
+		return err
+	}
+	if err := ioutil.WriteFile(options.Path, []byte("foo"), 0755); err != nil {
+		return err
+	}
 	ctx.Artifacts.Add(fakeArtifact)
 	return nil
 }
@@ -51,7 +57,10 @@ func TestPipeDescription(t *testing.T) {
 }
 
 func TestBuild(t *testing.T) {
+	folder, back := testlib.Mktmp(t)
+	defer back()
 	var config = config.Project{
+		Dist: folder,
 		Builds: []config.Build{
 			{
 				Lang:   "fake",
@@ -75,7 +84,10 @@ func TestBuild(t *testing.T) {
 }
 
 func TestRunPipe(t *testing.T) {
+	folder, back := testlib.Mktmp(t)
+	defer back()
 	var config = config.Project{
+		Dist: folder,
 		Builds: []config.Build{
 			{
 				Lang:    "fake",
@@ -89,7 +101,7 @@ func TestRunPipe(t *testing.T) {
 	var ctx = context.New(config)
 	ctx.Git.CurrentTag = "2.4.5"
 	assert.NoError(t, Pipe{}.Run(ctx))
-	assert.Equal(t, ctx.Artifacts.List(), []artifact.Artifact{fakeArtifact})
+	assert.Equal(t, ctx.Artifacts.List(), []*artifact.Artifact{fakeArtifact})
 }
 
 func TestRunFullPipe(t *testing.T) {
@@ -100,6 +112,7 @@ func TestRunFullPipe(t *testing.T) {
 	var config = config.Project{
 		Builds: []config.Build{
 			{
+				ID:      "build1",
 				Lang:    "fake",
 				Binary:  "testing",
 				Flags:   []string{"-v"},
@@ -111,13 +124,15 @@ func TestRunFullPipe(t *testing.T) {
 				Targets: []string{"whatever"},
 			},
 		},
+		Dist: folder,
 	}
 	var ctx = context.New(config)
 	ctx.Git.CurrentTag = "2.4.5"
 	assert.NoError(t, Pipe{}.Run(ctx))
-	assert.Equal(t, ctx.Artifacts.List(), []artifact.Artifact{fakeArtifact})
-	assert.True(t, exists(pre), pre)
-	assert.True(t, exists(post), post)
+	assert.Equal(t, ctx.Artifacts.List(), []*artifact.Artifact{fakeArtifact})
+	assert.FileExists(t, post)
+	assert.FileExists(t, pre)
+	assert.FileExists(t, filepath.Join(folder, "build1_whatever", "testing"))
 }
 
 func TestRunFullPipeFail(t *testing.T) {
@@ -126,6 +141,7 @@ func TestRunFullPipeFail(t *testing.T) {
 	var pre = filepath.Join(folder, "pre")
 	var post = filepath.Join(folder, "post")
 	var config = config.Project{
+		Dist: folder,
 		Builds: []config.Build{
 			{
 				Lang:    "fakeFail",
@@ -144,12 +160,14 @@ func TestRunFullPipeFail(t *testing.T) {
 	ctx.Git.CurrentTag = "2.4.5"
 	assert.EqualError(t, Pipe{}.Run(ctx), errFailedBuild.Error())
 	assert.Empty(t, ctx.Artifacts.List())
-	assert.True(t, exists(pre), pre)
-	assert.False(t, exists(post), post)
+	assert.FileExists(t, pre)
 }
 
 func TestRunPipeFailingHooks(t *testing.T) {
+	folder, back := testlib.Mktmp(t)
+	defer back()
 	var config = config.Project{
+		Dist: folder,
 		Builds: []config.Build{
 			{
 				Lang:    "fake",
@@ -211,13 +229,33 @@ func TestDefaultEmptyBuild(t *testing.T) {
 	}
 	assert.NoError(t, Pipe{}.Default(ctx))
 	var build = ctx.Config.Builds[0]
+	assert.Equal(t, ctx.Config.ProjectName, build.ID)
 	assert.Equal(t, ctx.Config.ProjectName, build.Binary)
 	assert.Equal(t, ".", build.Main)
 	assert.Equal(t, []string{"linux", "darwin"}, build.Goos)
 	assert.Equal(t, []string{"amd64", "386"}, build.Goarch)
 	assert.Equal(t, []string{"6"}, build.Goarm)
 	assert.Len(t, build.Ldflags, 1)
-	assert.Equal(t, "-s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}", build.Ldflags[0])
+	assert.Equal(t, "-s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}} -X main.builtBy=goreleaser", build.Ldflags[0])
+}
+
+func TestDefaultBuildID(t *testing.T) {
+	var ctx = &context.Context{
+		Config: config.Project{
+			ProjectName: "foo",
+			Builds: []config.Build{
+				{
+					Binary: "{{.Env.FOO}}",
+				},
+				{
+					Binary: "bar",
+				},
+			},
+		},
+	}
+	assert.EqualError(t, Pipe{}.Default(ctx), "found 2 builds with the ID 'foo', please fix your config")
+	var build = ctx.Config.Builds[0]
+	assert.Equal(t, ctx.Config.ProjectName, build.ID)
 }
 
 func TestSeveralBuildsWithTheSameID(t *testing.T) {
@@ -235,7 +273,7 @@ func TestSeveralBuildsWithTheSameID(t *testing.T) {
 			},
 		},
 	}
-	assert.EqualError(t, Pipe{}.Default(ctx), "found 2 items with the ID 'a', please fix your config")
+	assert.EqualError(t, Pipe{}.Default(ctx), "found 2 builds with the ID 'a', please fix your config")
 }
 
 func TestDefaultPartialBuilds(t *testing.T) {
@@ -266,7 +304,7 @@ func TestDefaultPartialBuilds(t *testing.T) {
 		assert.Equal(t, []string{"amd64", "386"}, build.Goarch)
 		assert.Equal(t, []string{"6"}, build.Goarm)
 		assert.Len(t, build.Ldflags, 1)
-		assert.Equal(t, "-s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}", build.Ldflags[0])
+		assert.Equal(t, "-s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}} -X main.builtBy=goreleaser", build.Ldflags[0])
 	})
 	t.Run("build1", func(t *testing.T) {
 		var build = ctx.Config.Builds[1]
@@ -345,7 +383,7 @@ func TestHookEnvs(t *testing.T) {
 			},
 		}), build.Env, "touch {{ .Env.FOO }}")
 		assert.NoError(t, err)
-		assert.True(t, exists(filepath.Join(tmp, "foo")))
+		assert.FileExists(t, filepath.Join(tmp, "foo"))
 	})
 
 	t.Run("invalid template", func(t *testing.T) {
@@ -361,22 +399,14 @@ func TestHookEnvs(t *testing.T) {
 		t.Skip("this fails on travis for some reason")
 		var shell = `#!/bin/sh -e
 touch "$BAR"`
-		ioutil.WriteFile(filepath.Join(tmp, "test.sh"), []byte(shell), 0750)
-		var err = runHook(context.New(config.Project{
+		err := ioutil.WriteFile(filepath.Join(tmp, "test.sh"), []byte(shell), 0750)
+		assert.NoError(t, err)
+		err = runHook(context.New(config.Project{
 			Builds: []config.Build{
 				build,
 			},
 		}), build.Env, "sh test.sh")
 		assert.NoError(t, err)
-		assert.True(t, exists(filepath.Join(tmp, "bar")))
+		assert.FileExists(t, filepath.Join(tmp, "bar"))
 	})
-}
-
-//
-// Helpers
-//
-
-func exists(file string) bool {
-	_, err := os.Stat(file)
-	return !os.IsNotExist(err)
 }

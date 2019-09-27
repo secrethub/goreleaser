@@ -99,6 +99,46 @@ In this example we're creating a new release every time a new tag is pushed.
 Note that you'll need to enable `tags` in repo settings and add `github_token`
 secret.
 
+#### 1.x
+```yml
+# .drone.yml
+
+kind: pipeline
+name: default
+
+steps:
+  - name: fetch
+    image: docker:git
+    commands:
+      - git fetch --tags
+
+  - name: test
+    image: golang
+    volumes:
+      - name: deps
+        path: /go
+    commands:
+      - go test -race -v ./... -cover
+
+  - name: release
+    image: golang
+    environment:
+      GITHUB_TOKEN:
+        from_secret: github_token
+    volumes:
+      - name: deps
+        path: /go
+    commands:
+      - curl -sL https://git.io/goreleaser | bash
+    when:
+      event: tag
+
+volumes:
+  - name: deps
+    temp: {}
+```
+
+#### 0.8 
 ```yml
 pipeline:
   clone:
@@ -127,7 +167,7 @@ source.developers.google.com/p/YourProjectId/r/github-YourGithubUser-YourGithubR
 you're building off.
 
 This repo has the wrong name, so to prevent Goreleaser from publishing to
-the wrong github repo, put in the your .goreleaser.yml file's release section:
+the wrong github repo, add to your `.goreleaser.yml` file's release section:
 
 ```yml
 release:
@@ -156,6 +196,8 @@ must explicitly run git tag $TAG_NAME (note that $TAG_NAME is only set when
 your build is triggered by a "push to tag".) This will allow goreleaser to
 create a release with that version, but it won't be able to build a proper
 changelog containing just the messages from the commits since the prior tag.
+Note that the build performs a shallow clone of git repositories and will
+only contain tags that reference the latest commit.
 
 ```yml
 steps:
@@ -317,3 +359,41 @@ dockers:
   - 'gitlab.example.com:4567/Group/Project:{{ .Tag }}'
   - 'gitlab.example.com:4567/Group/Project:latest'
 ```
+
+## Codefresh
+
+Codefresh uses Docker based pipelines where all steps must be Docker containers. Using Goreleaser is very easy via the [existing Docker image](https://hub.docker.com/r/goreleaser/goreleaser/).
+
+Here is an example pipeline that builds a Go application and then uses Goreleaser.
+
+```yaml
+version: '1.0'
+stages:
+  - prepare
+  - build
+  - release
+steps:
+  main_clone:
+    title: 'Cloning main repository...'
+    type: git-clone
+    repo: '${{CF_REPO_OWNER}}/${{CF_REPO_NAME}}'
+    revision: '${{CF_REVISION}}'
+    stage: prepare
+  BuildMyApp:
+    title: Compiling go code
+    stage: build
+    image: 'golang:1.12'
+    commands:
+      - go build 
+  ReleaseMyApp:
+    title: Creating packages
+    stage: release
+    image: 'goreleaser/goreleaser'
+    commands:
+      - goreleaser --rm-dist 
+```
+
+You need to pass the variable `GITHUB_TOKEN` in the Codefresh UI that contains credentials to your Github account or load it from [shared configuration](https://codefresh.io/docs/docs/configure-ci-cd-pipeline/shared-configuration/).
+You should also restrict this pipeline to run only on tags when you add [git triggers](https://codefresh.io/docs/docs/configure-ci-cd-pipeline/triggers/git-triggers/) on it.
+
+More details can be found in the [goreleaser example page](https://codefresh.io/docs/docs/learn-by-example/golang/goreleaser/).

@@ -21,6 +21,8 @@ func TestDefault(t *testing.T) {
 		ctx := context.New(config.Project{})
 		assert.NoError(t, Pipe{}.Default(ctx))
 		assert.Equal(t, "~/.config/goreleaser/github_token", ctx.Config.EnvFiles.GitHubToken)
+		assert.Equal(t, "~/.config/goreleaser/gitlab_token", ctx.Config.EnvFiles.GitLabToken)
+		assert.Equal(t, "~/.config/goreleaser/gitea_token", ctx.Config.EnvFiles.GiteaToken)
 	})
 	t.Run("custom config config", func(tt *testing.T) {
 		cfg := "what"
@@ -34,23 +36,68 @@ func TestDefault(t *testing.T) {
 	})
 }
 
-func TestValidEnv(t *testing.T) {
+func TestValidGithubEnv(t *testing.T) {
 	assert.NoError(t, os.Setenv("GITHUB_TOKEN", "asdf"))
 	var ctx = &context.Context{
 		Config: config.Project{},
 	}
 	assert.NoError(t, Pipe{}.Run(ctx))
+	assert.Equal(t, "asdf", ctx.Token)
+	assert.Equal(t, context.TokenTypeGitHub, ctx.TokenType)
+	// so the tests do not depend on each other
+	assert.NoError(t, os.Unsetenv("GITHUB_TOKEN"))
+}
+
+func TestValidGitlabEnv(t *testing.T) {
+	assert.NoError(t, os.Setenv("GITLAB_TOKEN", "qwertz"))
+	var ctx = &context.Context{
+		Config: config.Project{},
+	}
+	assert.NoError(t, Pipe{}.Run(ctx))
+	assert.Equal(t, "qwertz", ctx.Token)
+	assert.Equal(t, context.TokenTypeGitLab, ctx.TokenType)
+	// so the tests do not depend on each other
+	assert.NoError(t, os.Unsetenv("GITLAB_TOKEN"))
+}
+
+func TestValidGiteaEnv(t *testing.T) {
+	assert.NoError(t, os.Setenv("GITEA_TOKEN", "token"))
+	var ctx = &context.Context{
+		Config: config.Project{},
+	}
+	assert.NoError(t, Pipe{}.Run(ctx))
+	assert.Equal(t, "token", ctx.Token)
+	assert.Equal(t, context.TokenTypeGitea, ctx.TokenType)
+	// so the tests do not depend on each other
+	assert.NoError(t, os.Unsetenv("GITEA_TOKEN"))
 }
 
 func TestInvalidEnv(t *testing.T) {
 	assert.NoError(t, os.Unsetenv("GITHUB_TOKEN"))
+	assert.NoError(t, os.Unsetenv("GITLAB_TOKEN"))
 	var ctx = &context.Context{
 		Config: config.Project{},
 	}
 	assert.Error(t, Pipe{}.Run(ctx))
+	assert.EqualError(t, Pipe{}.Run(ctx), ErrMissingToken.Error())
 }
 
-func TestEmptyFileEnv(t *testing.T) {
+func TestMultipleEnvTokens(t *testing.T) {
+	assert.NoError(t, os.Setenv("GITHUB_TOKEN", "asdf"))
+	assert.NoError(t, os.Setenv("GITLAB_TOKEN", "qwertz"))
+	assert.NoError(t, os.Setenv("GITEA_TOKEN", "token"))
+	var ctx = &context.Context{
+		Config: config.Project{},
+	}
+	assert.Error(t, Pipe{}.Run(ctx))
+	assert.EqualError(t, Pipe{}.Run(ctx), ErrMultipleTokens.Error())
+	// so the tests do not depend on each other
+	assert.NoError(t, os.Unsetenv("GITHUB_TOKEN"))
+	assert.NoError(t, os.Unsetenv("GITLAB_TOKEN"))
+	assert.NoError(t, os.Unsetenv("GITEA_TOKEN"))
+}
+
+func TestEmptyGithubFileEnv(t *testing.T) {
 	assert.NoError(t, os.Unsetenv("GITHUB_TOKEN"))
 	var ctx = &context.Context{
 		Config: config.Project{},
@@ -58,7 +105,23 @@ func TestEmptyFileEnv(t *testing.T) {
 	assert.Error(t, Pipe{}.Run(ctx))
 }
 
-func TestEmptyEnvFile(t *testing.T) {
+func TestEmptyGitlabFileEnv(t *testing.T) {
+	assert.NoError(t, os.Unsetenv("GITLAB_TOKEN"))
+	var ctx = &context.Context{
+		Config: config.Project{},
+	}
+	assert.Error(t, Pipe{}.Run(ctx))
+}
+
+func TestEmptyGiteaFileEnv(t *testing.T) {
+	assert.NoError(t, os.Unsetenv("GITEA_TOKEN"))
+	var ctx = &context.Context{
+		Config: config.Project{},
+	}
+	assert.Error(t, Pipe{}.Run(ctx))
+}
+
+func TestEmptyGithubEnvFile(t *testing.T) {
 	assert.NoError(t, os.Unsetenv("GITHUB_TOKEN"))
 	f, err := ioutil.TempFile("", "token")
 	assert.NoError(t, err)
@@ -71,6 +134,36 @@ func TestEmptyEnvFile(t *testing.T) {
 		},
 	}
 	assert.EqualError(t, Pipe{}.Run(ctx), fmt.Sprintf("failed to load github token: open %s: permission denied", f.Name()))
+}
+
+func TestEmptyGitlabEnvFile(t *testing.T) {
+	assert.NoError(t, os.Unsetenv("GITLAB_TOKEN"))
+	f, err := ioutil.TempFile("", "token")
+	assert.NoError(t, err)
+	assert.NoError(t, os.Chmod(f.Name(), 0377))
+	var ctx = &context.Context{
+		Config: config.Project{
+			EnvFiles: config.EnvFiles{
+				GitLabToken: f.Name(),
+			},
+		},
+	}
+	assert.EqualError(t, Pipe{}.Run(ctx), fmt.Sprintf("failed to load gitlab token: open %s: permission denied", f.Name()))
+}
+
+func TestEmptyGiteaEnvFile(t *testing.T) {
+	assert.NoError(t, os.Unsetenv("GITEA_TOKEN"))
+	f, err := ioutil.TempFile("", "token")
+	assert.NoError(t, err)
+	assert.NoError(t, os.Chmod(f.Name(), 0377))
+	var ctx = &context.Context{
+		Config: config.Project{
+			EnvFiles: config.EnvFiles{
+				GiteaToken: f.Name(),
+			},
+		},
+	}
+	assert.EqualError(t, Pipe{}.Run(ctx), fmt.Sprintf("failed to load gitea token: open %s: permission denied", f.Name()))
 }
 
 func TestInvalidEnvChecksSkipped(t *testing.T) {

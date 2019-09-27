@@ -72,19 +72,26 @@ func TestUpload(t *testing.T) {
 				Bucket:    "test",
 				Artifacts: []string{"archive", "nfpm"},
 				Endpoint:  "http://" + listen,
+				IDs:       []string{"foo", "bar"},
 			},
 		},
 	})
 	ctx.Git = context.GitInfo{CurrentTag: "v1.0.0"}
-	ctx.Artifacts.Add(artifact.Artifact{
+	ctx.Artifacts.Add(&artifact.Artifact{
 		Type: artifact.UploadableArchive,
 		Name: "bin.tar.gz",
 		Path: tgzpath,
+		Extra: map[string]interface{}{
+			"ID": "foo",
+		},
 	})
-	ctx.Artifacts.Add(artifact.Artifact{
+	ctx.Artifacts.Add(&artifact.Artifact{
 		Type: artifact.LinuxPackage,
 		Name: "bin.deb",
 		Path: debpath,
+		Extra: map[string]interface{}{
+			"ID": "bar",
+		},
 	})
 	var name = "test_upload"
 	defer stop(t, name)
@@ -117,12 +124,12 @@ func TestUploadCustomBucketID(t *testing.T) {
 		},
 	})
 	ctx.Git = context.GitInfo{CurrentTag: "v1.0.0"}
-	ctx.Artifacts.Add(artifact.Artifact{
+	ctx.Artifacts.Add(&artifact.Artifact{
 		Type: artifact.UploadableArchive,
 		Name: "bin.tar.gz",
 		Path: tgzpath,
 	})
-	ctx.Artifacts.Add(artifact.Artifact{
+	ctx.Artifacts.Add(&artifact.Artifact{
 		Type: artifact.LinuxPackage,
 		Name: "bin.deb",
 		Path: debpath,
@@ -157,12 +164,12 @@ func TestUploadInvalidCustomBucketID(t *testing.T) {
 		},
 	})
 	ctx.Git = context.GitInfo{CurrentTag: "v1.0.0"}
-	ctx.Artifacts.Add(artifact.Artifact{
+	ctx.Artifacts.Add(&artifact.Artifact{
 		Type: artifact.UploadableArchive,
 		Name: "bin.tar.gz",
 		Path: tgzpath,
 	})
-	ctx.Artifacts.Add(artifact.Artifact{
+	ctx.Artifacts.Add(&artifact.Artifact{
 		Type: artifact.LinuxPackage,
 		Name: "bin.deb",
 		Path: debpath,

@@ -20,6 +20,19 @@ type GitHubURLs struct {
 	SkipTLSVerify bool   `yaml:"skip_tls_verify,omitempty"`
 }
 
+// GitLabURLs holds the URLs to be used when using gitlab ce/enterprise
+type GitLabURLs struct {
+	API           string `yaml:"api,omitempty"`
+	Download      string `yaml:"download,omitempty"`
+	SkipTLSVerify bool   `yaml:"skip_tls_verify,omitempty"`
+}
+
+// GiteaURLs holds the URLs to be used when using gitea
+type GiteaURLs struct {
+	API           string `yaml:"api,omitempty"`
+	SkipTLSVerify bool   `yaml:"skip_tls_verify,omitempty"`
+}
+
 // Repo represents any kind of repo (github, gitlab, etc)
 type Repo struct {
 	Owner string `yaml:",omitempty"`
@@ -38,6 +51,7 @@ func (r Repo) String() string {
 type Homebrew struct {
 	Name             string       `yaml:",omitempty"`
 	GitHub           Repo         `yaml:",omitempty"`
+	GitLab           Repo         `yaml:",omitempty"`
 	CommitAuthor     CommitAuthor `yaml:"commit_author,omitempty"`
 	Folder           string       `yaml:",omitempty"`
 	Caveats          string       `yaml:",omitempty"`
@@ -50,10 +64,10 @@ type Homebrew struct {
 	Homepage         string       `yaml:",omitempty"`
 	SkipUpload       string       `yaml:"skip_upload,omitempty"`
 	DownloadStrategy string       `yaml:"download_strategy,omitempty"`
-	SourceTarball    string       `yaml:"-"`
 	URLTemplate      string       `yaml:"url_template,omitempty"`
 	CustomRequire    string       `yaml:"custom_require,omitempty"`
 	CustomBlock      string       `yaml:"custom_block,omitempty"`
+	IDs              []string     `yaml:"ids,omitempty"`
 }
 
 // Scoop contains the scoop.sh section
@@ -158,9 +172,11 @@ type Archive struct {
 	Files           []string          `yaml:",omitempty"`
 }
 
-// Release config used for the GitHub release
+// Release config used for the GitHub/GitLab release
 type Release struct {
 	GitHub       Repo   `yaml:",omitempty"`
+	GitLab       Repo   `yaml:",omitempty"`
+	Gitea        Repo   `yaml:",omitempty"`
 	Draft        bool   `yaml:",omitempty"`
 	Disable      bool   `yaml:",omitempty"`
 	Prerelease   string `yaml:",omitempty"`
@@ -194,6 +210,7 @@ type NFPMScripts struct {
 // NFPMOverridables is used to specify per package format settings
 type NFPMOverridables struct {
 	NameTemplate string            `yaml:"name_template,omitempty"`
+	Epoch        string            `yaml:"epoch,omitempty"`
 	Replacements map[string]string `yaml:",omitempty"`
 	Dependencies []string          `yaml:",omitempty"`
 	Recommends   []string          `yaml:",omitempty"`
@@ -215,9 +232,10 @@ type Sign struct {
 
 // SnapcraftAppMetadata for the binaries that will be in the snap package
 type SnapcraftAppMetadata struct {
-	Plugs  []string
-	Daemon string
-	Args   string
+	Plugs     []string
+	Daemon    string
+	Args      string
+	Completer string `yaml:",omitempty"`
 }
 
 // Snapcraft config
@@ -226,6 +244,8 @@ type Snapcraft struct {
 	Replacements map[string]string `yaml:",omitempty"`
 	Publish      bool              `yaml:",omitempty"`
 
+	ID          string                          `yaml:",omitempty"`
+	Builds      []string                        `yaml:",omitempty"`
 	Name        string                          `yaml:",omitempty"`
 	Summary     string                          `yaml:",omitempty"`
 	Description string                          `yaml:",omitempty"`
@@ -250,16 +270,13 @@ type Checksum struct {
 
 // Docker image config
 type Docker struct {
-	Binary             string   `yaml:",omitempty"`
 	Binaries           []string `yaml:",omitempty"`
 	Goos               string   `yaml:",omitempty"`
 	Goarch             string   `yaml:",omitempty"`
 	Goarm              string   `yaml:",omitempty"`
-	Image              string   `yaml:",omitempty"`
 	Dockerfile         string   `yaml:",omitempty"`
 	ImageTemplates     []string `yaml:"image_templates,omitempty"`
 	SkipPush           string   `yaml:"skip_push,omitempty"`
-	TagTemplates       []string `yaml:"tag_templates,omitempty"`
 	Files              []string `yaml:"extra_files,omitempty"`
 	BuildFlagTemplates []string `yaml:"build_flag_templates,omitempty"`
 }
@@ -280,6 +297,8 @@ type Changelog struct {
 // values like the github token for example
 type EnvFiles struct {
 	GitHubToken string `yaml:"github_token,omitempty"`
+	GitLabToken string `yaml:"gitlab_token,omitempty"`
+	GiteaToken  string `yaml:"gitea_token,omitempty"`
 }
 
 // Before config
@@ -289,13 +308,23 @@ type Before struct {
 
 // S3 contains s3 config
 type S3 struct {
-	Region    string
-	Bucket    string
+	Region    string `yaml:",omitempty"`
+	Bucket    string `yaml:",omitempty"`
 	Artifacts []string
-	Folder    string
-	Profile   string
-	Endpoint  string // used for minio for example
-	ACL       string
+	Folder    string   `yaml:",omitempty"`
+	Profile   string   `yaml:",omitempty"`
+	Endpoint  string   `yaml:",omitempty"` // used for minio for example
+	ACL       string   `yaml:",omitempty"`
+	IDs       []string `yaml:"ids,omitempty"`
+}
+
+// Blob contains config for GO CDK blob
+type Blob struct {
+	Bucket   string   `yaml:",omitempty"`
+	Provider string   `yaml:",omitempty"`
+	Folder   string   `yaml:",omitempty"`
+	KMSKey   string   `yaml:",omitempty"`
+	IDs      []string `yaml:"ids,omitempty"`
 }
 
 // Put HTTP upload configuration
@@ -330,35 +359,46 @@ type Alpine struct {
 
 // Project includes all project configuration
 type Project struct {
-	ProjectName   string    `yaml:"project_name,omitempty"`
-	Env           []string  `yaml:",omitempty"`
-	Release       Release   `yaml:",omitempty"`
-	Brew          Homebrew  `yaml:",omitempty"`
-	Scoop         Scoop     `yaml:",omitempty"`
-	Builds        []Build   `yaml:",omitempty"`
-	Archive       Archive   `yaml:",omitempty"` // TODO: remove this
-	Archives      []Archive `yaml:",omitempty"`
-	NFPM          NFPM      `yaml:",omitempty"` // TODO: remove this
-	NFPMs         []NFPM    `yaml:"nfpms,omitempty"`
-	Snapcraft     Snapcraft `yaml:",omitempty"`
-	Snapshot      Snapshot  `yaml:",omitempty"`
-	Checksum      Checksum  `yaml:",omitempty"`
-	Dockers       []Docker  `yaml:",omitempty"`
-	Artifactories []Put     `yaml:",omitempty"`
-	Alpine        []Alpine  `yaml:",omitempty"`
-	Puts          []Put     `yaml:",omitempty"`
-	S3            []S3      `yaml:"s3,omitempty"`
-	Changelog     Changelog `yaml:",omitempty"`
-	Dist          string    `yaml:",omitempty"`
-	Sign          Sign      `yaml:",omitempty"`
-	EnvFiles      EnvFiles  `yaml:"env_files,omitempty"`
-	Before        Before    `yaml:",omitempty"`
+	ProjectName   string      `yaml:"project_name,omitempty"`
+	Env           []string    `yaml:",omitempty"`
+	Release       Release     `yaml:",omitempty"`
+	Brew          Homebrew    `yaml:",omitempty"` // TODO: remove this
+	Brews         []Homebrew  `yaml:",omitempty"`
+	Scoop         Scoop       `yaml:",omitempty"`
+	Builds        []Build     `yaml:",omitempty"`
+	Archive       Archive     `yaml:",omitempty"` // TODO: remove this
+	Archives      []Archive   `yaml:",omitempty"`
+	NFPM          NFPM        `yaml:",omitempty"` // TODO: remove this
+	NFPMs         []NFPM      `yaml:"nfpms,omitempty"`
+	Snapcraft     Snapcraft   `yaml:",omitempty"` // TODO: remove this
+	Snapcrafts    []Snapcraft `yaml:",omitempty"`
+	Snapshot      Snapshot    `yaml:",omitempty"`
+	Checksum      Checksum    `yaml:",omitempty"`
+	Dockers       []Docker    `yaml:",omitempty"`
+	Artifactories []Put       `yaml:",omitempty"`
+	Alpine        []Alpine    `yaml:",omitempty"`
+	Puts          []Put       `yaml:",omitempty"`
+	S3            []S3        `yaml:"s3,omitempty"`
+	Blob          []Blob      `yaml:"blob,omitempty"` // TODO: remove this
+	Blobs         []Blob      `yaml:"blobs,omitempty"`
+	Changelog     Changelog   `yaml:",omitempty"`
+	Dist          string      `yaml:",omitempty"`
+	Sign          Sign        `yaml:",omitempty"` // TODO: remove this
+	Signs         []Sign      `yaml:",omitempty"`
+	EnvFiles      EnvFiles    `yaml:"env_files,omitempty"`
+	Before        Before      `yaml:",omitempty"`
 
 	// this is a hack ¯\_(ツ)_/¯
 	SingleBuild Build `yaml:"build,omitempty"`
 
 	// should be set if using github enterprise
 	GitHubURLs GitHubURLs `yaml:"github_urls,omitempty"`
+
+	// should be set if using a private gitlab
+	GitLabURLs GitLabURLs `yaml:"gitlab_urls,omitempty"`
+
+	// should be set if using Gitea
+	GiteaURLs GiteaURLs `yaml:"gitea_urls,omitempty"`
 }
 
 // Load config file
@@ -367,6 +407,7 @@ func Load(file string) (config Project, err error) {
 	if err != nil {
 		return
 	}
+	defer f.Close()
 	log.WithField("file", file).Info("loading config file")
 	return LoadReader(f)
 }

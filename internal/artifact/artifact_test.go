@@ -17,7 +17,7 @@ var _ fmt.Stringer = Type(0)
 func TestAdd(t *testing.T) {
 	var g errgroup.Group
 	var artifacts = New()
-	for _, a := range []Artifact{
+	for _, a := range []*Artifact{
 		{
 			Name: "foo",
 			Type: UploadableArchive,
@@ -46,7 +46,7 @@ func TestAdd(t *testing.T) {
 }
 
 func TestFilter(t *testing.T) {
-	var data = []Artifact{
+	var data = []*Artifact{
 		{
 			Name:   "foo",
 			Goos:   "linux",
@@ -89,7 +89,7 @@ func TestFilter(t *testing.T) {
 	assert.Len(t, artifacts.Filter(
 		And(
 			ByType(Checksum),
-			func(a Artifact) bool {
+			func(a *Artifact) bool {
 				return a.Name == "checkzumm"
 			},
 		),
@@ -107,7 +107,7 @@ func TestFilter(t *testing.T) {
 }
 
 func TestGroupByPlatform(t *testing.T) {
-	var data = []Artifact{
+	var data = []*Artifact{
 		{
 			Name:   "foo",
 			Goos:   "linux",
@@ -187,7 +187,7 @@ func TestInvalidAlgorithm(t *testing.T) {
 }
 
 func TestExtraOr(t *testing.T) {
-	var a = Artifact{
+	var a = &Artifact{
 		Extra: map[string]interface{}{
 			"Foo": "foo",
 		},
@@ -197,7 +197,7 @@ func TestExtraOr(t *testing.T) {
 }
 
 func TestByIDs(t *testing.T) {
-	var data = []Artifact{
+	var data = []*Artifact{
 		{
 			Name: "foo",
 			Extra: map[string]interface{}{
@@ -231,4 +231,41 @@ func TestByIDs(t *testing.T) {
 	require.Len(t, artifacts.Filter(ByIDs("check")).items, 1)
 	require.Len(t, artifacts.Filter(ByIDs("foo")).items, 2)
 	require.Len(t, artifacts.Filter(ByIDs("foo", "bar")).items, 3)
+}
+
+func TestByFormats(t *testing.T) {
+	var data = []*Artifact{
+		{
+			Name: "foo",
+			Extra: map[string]interface{}{
+				"Format": "zip",
+			},
+		},
+		{
+			Name: "bar",
+			Extra: map[string]interface{}{
+				"Format": "tar.gz",
+			},
+		},
+		{
+			Name: "foobar",
+			Extra: map[string]interface{}{
+				"Format": "zip",
+			},
+		},
+		{
+			Name: "bin",
+			Extra: map[string]interface{}{
+				"Format": "binary",
+			},
+		},
+	}
+	var artifacts = New()
+	for _, a := range data {
+		artifacts.Add(a)
+	}
+
+	require.Len(t, artifacts.Filter(ByFormats("binary")).items, 1)
+	require.Len(t, artifacts.Filter(ByFormats("zip")).items, 2)
+	require.Len(t, artifacts.Filter(ByFormats("zip", "tar.gz")).items, 3)
 }

@@ -171,7 +171,7 @@ func (Pipe) Run(ctx *context.Context) error {
 			apkFileName := fmt.Sprintf("%s-%s-r%d.apk", alpine.Name, ctx.Version, alpine.Rel)
 			apkFilePath := filepath.Join(abuildOutputPath, apkFileName)
 
-			ctx.Artifacts.Add(artifact.Artifact{
+			ctx.Artifacts.Add(&artifact.Artifact{
 				Type:    artifact.APK,
 				Name:    apkFileName,
 				Path:    apkFilePath,
@@ -192,7 +192,7 @@ func (Pipe) Run(ctx *context.Context) error {
 				return fmt.Errorf("%s:\n%s", err, string(output))
 			}
 
-			ctx.Artifacts.Add(artifact.Artifact{
+			ctx.Artifacts.Add(&artifact.Artifact{
 				Type:    artifact.APKIndex,
 				Name:    apkIndexFileName,
 				Path:    apkIndexPath,

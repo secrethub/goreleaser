@@ -5,9 +5,15 @@ weight: 500
 hideFromIndex: true
 ---
 
-This page will be used to list deprecation notices accross GoReleaser.
+This page will be used to list deprecation notices across GoReleaser.
 
 Deprecate code will be removed after ~6 months from the time it was deprecated.
+
+You can check your use of deprecated configurations by running:
+
+```sh
+$ goreleaser check
+```
 
 ## Active deprecation notices
 
@@ -32,6 +38,119 @@ to this:
 ```
 
 -->
+
+
+### blob
+
+> since 2019-08-02
+
+Blob was deprecated in favor of its plural form.
+It was already accepting multiple inputs, but its pluralized now so its more
+clear.
+
+Change this:
+
+```yaml
+blob:
+  # etc
+```
+
+to this:
+
+```yaml
+blobs:
+  # etc
+```
+
+### sign
+
+> since 2019-07-20
+
+Sign was deprecated in favor of its plural form.
+
+Change this:
+
+```yaml
+sign:
+  # etc
+```
+
+to this:
+
+```yaml
+signs:
+  -
+    # etc
+```
+
+
+### brew
+
+> since 2019-06-09
+
+Brew was deprecated in favor of its plural form.
+
+Change this:
+
+```yaml
+brew:
+  # etc
+```
+
+to this:
+
+```yaml
+brews:
+  -
+    # etc
+```
+
+### s3
+
+> since 2019-06-09
+
+S3 was deprecated in favor of the new `blob`, which supports S3, Azure Blob and
+GCS.
+
+Change this:
+
+```yaml
+s3:
+-
+  # etc
+```
+
+to this:
+
+```yaml
+blobs:
+-
+  provider: s3
+  # etc
+```
+
+### snapcraft
+
+> since 2019-05-39
+
+We now allow multiple Snapcraft configs, so the `snapcraft` statement will be removed.
+
+Change this:
+
+```yaml
+snapcraft:
+  publish: true
+  # ...
+```
+
+to this:
+
+```yaml
+snapcrafts:
+  -
+    publish: true
+    # ...
+```
 
 ### nfpm
 
@@ -77,9 +196,13 @@ archives:
     format: zip
 ```
 
+## Expired deprecation notices
+
+The following options were deprecated for ~6 months and are now fully removed.
+
 ### docker.binary
 
-> since 2018-10-01
+> since 2018-10-01, removed 2019-08-02
 
 You can now create a Docker image with multiple binaries.
 
@@ -102,7 +225,7 @@ dockers:
 
 ### docker.image
 
-> since 2018-10-20
+> since 2018-10-20, removed 2019-08-02
 
 This property was deprecated in favor of more flexible `image_templates`.
 The idea is to be able to define several images and tags using templates instead of just one image with tag templates.
@@ -127,7 +250,7 @@ dockers:
 
 ### docker.tag_templates
 
-> since 2018-10-20
+> since 2018-10-20, removed 2019-08-02
 
 This property was deprecated in favor of more flexible `image_templates`.
 The idea is to be able to define several images and tags using templates instead of just one image with tag templates.
@@ -148,10 +271,6 @@ dockers:
 - image_templates:
     - 'foo/bar:{{ .Tag }}'
 ```
-
-## Expired deprecation notices
-
-The following options were deprecated for ~6 months and are now fully removed.
 
 ### git.short_hash
 

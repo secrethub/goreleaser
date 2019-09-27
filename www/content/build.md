@@ -18,7 +18,7 @@ builds:
   # You can have multiple builds defined as a yaml list
   -
     # ID of the build.
-    # Defaults to the binary name.
+    # Defaults to the project name.
     id: "my-build"
 
     # Path to main.go file or main package.
@@ -49,7 +49,7 @@ builds:
       - ./dontoptimizeme=-N
 
     # Custom ldflags templates.
-    # Default is `-s -w -X main.version={{.Version}} -X main.commit={{.ShortCommit}} -X main.date={{.Date}}`.
+    # Default is `-s -w -X main.version={{.Version}} -X main.commit={{.ShortCommit}} -X main.date={{.Date}} -X main.builtBy=goreleaser`.
     ldflags:
      - -s -w -X main.build={{.Version}}
      - ./usemsan=-msan
@@ -124,13 +124,13 @@ GOVERSION=$(go version) goreleaser
  try to download the dependencies. Since several builds run in parallel, it is
  very likely to fail.
 
- You can solve this by running `go mod download` before calling `goreleaser` or
+ You can solve this by running `go mod tidy` before calling `goreleaser` or
  by adding a [hook][] doing that on your `.goreleaser.yaml` file:
 
  ```yaml
  before:
    hooks:
-   - go mod download
+   - go mod tidy
  # rest of the file...
  ```
 

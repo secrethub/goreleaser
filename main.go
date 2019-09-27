@@ -16,14 +16,16 @@ import (
 	"github.com/goreleaser/goreleaser/internal/static"
 	"github.com/goreleaser/goreleaser/pkg/config"
 	"github.com/goreleaser/goreleaser/pkg/context"
+	"github.com/goreleaser/goreleaser/pkg/defaults"
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
 )
 
 // nolint: gochecknoglobals
 var (
 	version = "dev"
-	commit  = "none"
-	date    = "unknown"
+	commit  = ""
+	date    = ""
+	builtBy = ""
 )
 
 type releaseOptions struct {
@@ -51,9 +53,10 @@ func main() {
 
 	var app = kingpin.New("goreleaser", "Deliver Go binaries as fast and easily as possible")
 	var debug = app.Flag("debug", "Enable debug mode").Bool()
+	var config = app.Flag("config", "Load configuration from file").Short('c').Short('f').PlaceHolder(".goreleaser.yml").String()
 	var initCmd = app.Command("init", "Generates a .goreleaser.yml file").Alias("i")
+	var checkCmd = app.Command("check", "Checks if configuration is valid").Alias("c")
 	var releaseCmd = app.Command("release", "Releases the current project").Alias("r").Default()
-	var config = releaseCmd.Flag("config", "Load configuration from file").Short('c').Short('f').PlaceHolder(".goreleaser.yml").String()
 	var releaseNotes = releaseCmd.Flag("release-notes", "Load custom release notes from a markdown file").PlaceHolder("notes.md").String()
 	var snapshot = releaseCmd.Flag("snapshot", "Generate an unversioned snapshot release, skipping all validations and without publishing any artifacts").Bool()
 	var skipPublish = releaseCmd.Flag("skip-publish", "Skips publishing artifacts").Bool()
@@ -64,7 +67,7 @@ func main() {
 	var timeout = releaseCmd.Flag("timeout", "Timeout to the entire release process").Default("30m").Duration()
 	var include = releaseCmd.Flag("include", "Only include pipes in comma-separated list (e.g. s3,github,brew,snap)").String()
 
-	app.Version(fmt.Sprintf("%v, commit %v, built at %v", version, commit, date))
+	app.Version(buildVersion(version, commit, date, builtBy))
 	app.VersionFlag.Short('v')
 	app.HelpFlag.Short('h')
 	app.UsageTemplate(static.UsageTemplate)
@@ -75,13 +78,23 @@ func main() {
 	}
 	switch cmd {
 	case initCmd.FullCommand():
-		var filename = ".goreleaser.yml"
+		var filename = *config
+		if filename == "" {
+			filename = ".goreleaser.yml"
+		}
 		if err := initProject(filename); err != nil {
 			log.WithError(err).Error("failed to init project")
 			os.Exit(1)
 			return
 		}
 		log.WithField("file", filename).Info("config created; please edit accordingly to your needs")
+	case checkCmd.FullCommand():
+		if err := checkConfig(*config); err != nil {
+			log.WithError(err).Errorf(color.New(color.Bold).Sprintf("config is invalid"))
+			os.Exit(1)
+			return
+		}
+		log.Infof(color.New(color.Bold).Sprintf("config is valid"))
 	case releaseCmd.FullCommand():
 		start := time.Now()
 		log.Infof(color.New(color.Bold).Sprintf("releasing using goreleaser %s...", version))
@@ -104,6 +117,22 @@ func main() {
 		}
 		log.Infof(color.New(color.Bold).Sprintf("release succeeded after %0.2fs", time.Since(start).Seconds()))
 	}
+}
+
+func checkConfig(filename string) error {
+	cfg, err := loadConfig(filename)
+	if err != nil {
+		return err
+	}
+	var ctx = context.New(cfg)
+	return ctrlc.Default.Run(ctx, func() error {
+		for _, pipe := range defaults.Defaulters {
+			if err := middleware.ErrHandler(pipe.Default)(ctx); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 func releaseProject(options releaseOptions) error {
@@ -168,4 +197,18 @@ func loadConfig(path string) (config.Project, error) {
 	// don't exist, so, return an empty config and a nil err.
 	log.Warn("could not find a config file, using defaults...")
 	return config.Project{}, nil
+}
+
+func buildVersion(version, commit, date, builtBy string) string {
+	var result = fmt.Sprintf("version: %s", version)
+	if commit != "" {
+		result = fmt.Sprintf("%s\ncommit: %s", result, commit)
+	}
+	if date != "" {
+		result = fmt.Sprintf("%s\nbuilt at: %s", result, date)
+	}
+	if builtBy != "" {
+		result = fmt.Sprintf("%s\nbuilt by: %s", result, builtBy)
+	}
+	return result
 }

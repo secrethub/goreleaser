@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/goreleaser/goreleaser/internal/artifact"
+	"github.com/goreleaser/goreleaser/internal/deprecate"
 	"github.com/goreleaser/goreleaser/internal/pipe"
 	"github.com/goreleaser/goreleaser/internal/semerrgroup"
 	"github.com/goreleaser/goreleaser/internal/tmpl"
@@ -44,6 +45,7 @@ func (Pipe) Default(ctx *context.Context) error {
 		if s3.Bucket == "" {
 			continue
 		}
+		deprecate.Notice("s3")
 		if s3.Region == "" {
 			s3.Region = "us-east-1"
 		}
@@ -100,17 +102,22 @@ func upload(ctx *context.Context, conf config.S3) error {
 		return err
 	}
 
-	var filters []artifact.Filter
+	var typeFilters []artifact.Filter
 	for _, artTypeStr := range conf.Artifacts {
 		if artType, ok := artifactTypes[artTypeStr]; ok {
-			filters = append(filters, artifact.ByType(artType))
+			typeFilters = append(typeFilters, artifact.ByType(artType))
 		} else {
 			return errors.Errorf("unknown artifact type: %s", artTypeStr)
 		}
 	}
+	filter := artifact.Or(typeFilters...)
+
+	if len(conf.IDs) > 0 {
+		filter = artifact.And(filter, artifact.ByIDs(conf.IDs...))
+	}
 
 	var g = semerrgroup.New(ctx.Parallelism)
-	for _, artifact := range ctx.Artifacts.Filter(artifact.Or(filters...)).List() {
+	for _, artifact := range ctx.Artifacts.Filter(filter).List() {
 		artifact := artifact
 		g.Go(func() error {
 			f, err := os.Open(artifact.Path)
