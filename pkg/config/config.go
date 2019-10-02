@@ -342,10 +342,12 @@ type Put struct {
 
 // Alpine upload configuration
 type Alpine struct {
-	Name       string `yaml:",omitempty"`
-	Root       string `yaml:",omitempty"`
-	Branch     string `yaml:",omitempty"`
-	Repository string `yaml:",omitempty"`
+	Name             string `yaml:",omitempty"`
+	Root             string `yaml:",omitempty"`
+	Branch           string `yaml:",omitempty"`
+	Repository       string `yaml:",omitempty"`
+	Dependencies     string `yaml:",omitempty"`
+	MakeDependencies string `yaml:",omitempty"`
 
 	Contributor string `yaml:",omitempty"`
 	Maintainer  string `yaml:",omitempty"`
