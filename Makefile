@@ -4,7 +4,8 @@ TEST_OPTIONS?=
 
 export PATH := ./bin:$(PATH)
 export GO111MODULE := on
-export GOPROXY := https://gocenter.io
+# enable consistent Go 1.12/1.13 GOPROXY behavior.
+export GOPROXY = https://proxy.golang.org
 
 # Install all the build and lint dependencies
 setup:
@@ -31,8 +32,11 @@ fmt:
 
 # Run all the linters
 lint:
-	# TODO: fix tests and lll issues
-	./bin/golangci-lint run --tests=false --enable-all --disable=lll ./...
+	# TODO: fix tests issues
+	# TODO: fix lll issues
+	# TODO: fix funlen issues
+	# TODO: fix godox issues
+	./bin/golangci-lint run --tests=false --enable-all --disable=lll --disable funlen --disable godox ./...
 	./bin/misspell -error **/*
 .PHONY: lint
 
