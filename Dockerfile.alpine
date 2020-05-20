@@ -1,7 +1,7 @@
 #############################################
 # Download dependencies
 #############################################
-FROM golang:1.13-alpine as deps
+FROM golang:1.14-alpine as deps
 
 RUN apk add --update make git
 WORKDIR /build
@@ -21,7 +21,7 @@ RUN make build
 #############################################
 # Run
 #############################################
-FROM golang:1.13-alpine
+FROM golang:1.14-alpine
 
 RUN apk add --update alpine-sdk git
 
